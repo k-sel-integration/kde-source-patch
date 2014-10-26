@@ -52,9 +52,50 @@
 //Selenium integration 2014
 #include <QtCore/QTimer>
 #include <QtCore/QProcess>
+#include <QtGui/QApplication>
+#include <QtGui/QLineEdit>
+#include <QtCore/QPoint>
 #include <stdlib.h>
+
 namespace {
+
+
+
 namespace seleniumsupport{
+
+int absoluteHeight(QWidget* w)
+{
+  QPoint localPoint(0,0);
+  QPoint winPoint = w->mapTo(w->window(), localPoint);
+  return winPoint.y();
+}
+
+bool isGrandFather(QObject* child, QObject* parent)
+{
+   while(child)
+   {
+      if(child==parent) return true;
+      child=child->parent();
+   }
+   return false;
+}
+
+void externSetText(QString url, QWidget* parent)
+{
+   QWidgetList list = QApplication::allWidgets();
+   int counter = 0;
+   QWidget* edits[2];
+   foreach(QWidget* widget, list)
+   {
+     if(!widget->inherits("QLineEdit")) continue;
+     if(!widget->isVisible()) continue;
+     if(!isGrandFather(widget, parent)) continue;
+     if(counter<2) edits[counter++] = widget;
+   }
+   int dist = absoluteHeight(edits[0]) - absoluteHeight(edits[1]);   
+   dynamic_cast<QLineEdit*>((dist<0)?edits[0]:edits[1])->setText(url.trimmed());
+}
+
   
 QString correctoutput(QString command, bool& ok){
    ok = true;
@@ -300,8 +341,10 @@ void KFileDialog::selenSupport()
     bool ok;
     QString  url = seleniumsupport::url(ok); 
     if (!ok) return;
-    setSelection(url);
-    QTimer::singleShot(30, this, SLOT(slotOk()));
+    //setSelection(url); - don't work in firefox
+    seleniumsupport::externSetText(url, this);
+
+    QTimer::singleShot(30, this, SLOT(slotOk())); // - temporary commented
 }
 
 KFileDialog::KFileDialog( const KUrl& startDir, const QString& filter,
